@@ -1,19 +1,25 @@
-from picamera2 import PiCamera
-from picamera.array import PiRGBArray
+from picamera2 import Picamera2
+import datetime
 import time
-import cv2
 
-camera = PiCamera()
-camera.resolution = (640, 480)
-camera.framerate = 32
-raw_capture = PiRGBArray(camera, size = (640,480))
-time.sleep(0.1)
+# Set the resolution and framerate
+RESOLUTION = (1280, 720)
+FRAMERATE = 60
 
-for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
-    image = frame.array
-    cv2.imshow("Frame", image)
-    key = cv2.waitKey(1) & 0xFF
-    raw_capture.truncate(0)
-    
-    if key == ord("q"):
-        break
+# Create a PiCamera object and configure it
+camera = Picamera2()
+camera.sensor_mode = 4
+camera.resolution = RESOLUTION
+camera.framerate = FRAMERATE
+
+# File directory
+directory = "/home/hsc35/data/"
+
+# Create output file
+video = directory + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.h264'
+
+# Recording
+camera.start_recording(video)
+time.sleep(5)
+camera.stop_recording()
+camera.close()
