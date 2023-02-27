@@ -9,7 +9,7 @@ class GPS:
         uart = serial.Serial("/dev/ttyS0", baudrate=9600, timeout=10)
 
         # Create a GPS module instance.
-        self.gps = adafruit_gps.GPS(uart, debug=False) # Use UART/pyserial
+        self.gps = adafruit_gps.GPS(uart, debug=False)
 
         # Initialize the GPS module   
         self.gps.send_command(b"PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0") 
@@ -21,6 +21,7 @@ class GPS:
     def fix(self):
         # return True if gps has fixed
         self.gps.update()
+        
         if self.gps.has_fix:
             return True
         else:
@@ -28,9 +29,11 @@ class GPS:
 
 
     def run(self):
-        # return latitude, longitude, altitude, and speed (in m/s) if fixed
+        # return latitude, longitude, altitude, and speed if fixed
         self.gps.update()
+        
         if self.fix():
+            # Speed knots output of None cannot be converted to m/s
             if self.gps.speed_knots is not None:
                 return ("{0:.6f}".format(self.gps.latitude),
                         "{0:.6f}".format(self.gps.longitude),
