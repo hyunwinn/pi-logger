@@ -28,7 +28,7 @@ GPIO.setup(BLUE_LED, GPIO.OUT)
 GPIO.setup(GREEN_LED, GPIO.OUT)
 
 # Data directory
-directory = "/home/hscho19/PartIIB_project/data/"
+directory = "/home/hsc35/data/"
 
 if not os.path.exists(directory):
     os.makedirs(directory)
