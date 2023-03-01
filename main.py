@@ -4,8 +4,9 @@ import os
 import RPi.GPIO as GPIO
 from smbus2 import SMBus
 from bno055 import BNO055
-from tabulate import tabulate
 from gps import GPS
+from tabulate import tabulate
+from ds3231 import DS3231
 
 # BNO055 mode register
 ACCGYRO = 0x05
@@ -17,6 +18,9 @@ imu.mode(ACCGYRO)
 
 # Ultimate GPS setup
 gps = GPS()
+
+#RTC setup
+rtc = DS3231(bus)
 
 # GPIO pins setup
 START_BUTTON = 26
@@ -62,10 +66,10 @@ def start_log(channel):
         
         # Save to USB drive if mounted
         if os.path.exists(usb_directory):
-            file_name = usb_directory + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            file_name = usb_directory + rtc.now()
         # Save to Pi
         else:
-            file_name = directory + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            file_name = directory + rtc.now()
             
         file = open(file_name, "w")
         data_imu = [['Time (s)', 'Acceleration (m/s^2)', 'Gyroscope (deg/sec)']]

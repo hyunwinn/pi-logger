@@ -1,4 +1,3 @@
-import time
 import adafruit_gps
 import serial
 

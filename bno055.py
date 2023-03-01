@@ -1,6 +1,4 @@
 import time
-import RPi.GPIO as GPIO
-from smbus2 import SMBus
 
 # I2C addresses
 I2C_ADDR_1 = 0x28
@@ -32,7 +30,7 @@ AXIS_MAP_SIGN = 0x42  # Axis sign register
 AXIS_REMAP_POSITIVE = 0x00
 AXIS_REMAP_NEGATIVE = 0x01
 
-# Sensor configuration Regiters
+# Sensor configuration regiters
 ACC_CONFIG = 0x08
 GYR_CONFIG_0 = 0x0A
 GYR_CONFIG_1 = 0x0B
@@ -55,11 +53,6 @@ ACCGYRO = 0x05
 AMG = 0x07
 NDOF = 0x0C
 
-# Timing
-SAMPLE_INTERVAL =  10
-
-def millis():
-    return time.time_ns() // 1000000
 
 class BNO055(object):
 
