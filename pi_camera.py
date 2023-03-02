@@ -1,26 +1,28 @@
-from picamera2 import Picamera2
+from picamera2 import Picamera2, MappedArray
 from picamera2.encoders import H264Encoder, Quality
-import datetime
 import time
 
-# Set the resolution and framerate
-RESOLUTION = (1280, 720)
-FRAMERATE = 60
+# Set the resolution, framerate, and bitrate
+RESOLUTION = (1280, 720)    # 720p
+FRAMERATE = (16666, 16666)  # 60 FPS
+BITRATE = 5000000   # 5 Mbps
 
-# Create a PiCamera object and configure it
-camera = Picamera2()
-camera.sensor_mode = 4
-camera.resolution = RESOLUTION
-camera.framerate = FRAMERATE
 
-# File directory
-directory = "/home/hsc35/data/"
+class Pi_Camera:
+    
+    def __init__(self):
+        # Create a PiCamera object and configure it
+        self.camera = Picamera2()
+        self.encoder = H264Encoder(BITRATE)
+        config = self.camera.create_video_configuration(main={"size": RESOLUTION}, 
+                                                        controls={"FrameDurationLimits": FRAMERATE})
+        self.camera.configure(config)
+        time.sleep(0.1)
+        
 
-# Create output file
-video = directory + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.h264'
-
-# Recording
-camera.start_recording(video)
-time.sleep(5)
-camera.stop_recording()
-camera.close()
+    def start_recording(self, file_name):
+        self.camera.start_recording(self.encoder, file_name, Quality.MEDIUM)
+        
+    
+    def stop_recording(self):
+        self.camera.stop_recording()

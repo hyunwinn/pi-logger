@@ -7,6 +7,7 @@ from bno055 import BNO055
 from gps import GPS
 from tabulate import tabulate
 from ds3231 import DS3231
+from pi_camera import Pi_Camera
 
 # BNO055 mode register
 ACCGYRO = 0x05
@@ -19,8 +20,11 @@ imu.mode(ACCGYRO)
 # Ultimate GPS setup
 gps = GPS()
 
-#RTC setup
+# RTC setup
 rtc = DS3231(bus)
+
+# Initialise camera object
+camera = Pi_Camera()
 
 # GPIO pins setup
 START_BUTTON = 26
@@ -37,6 +41,7 @@ directory = "/home/hsc35/data/"
 
 # Define File
 file_name = None
+video_file = None
 file = None
 
 # Define debounce time of start button
@@ -67,9 +72,11 @@ def start_log(channel):
         # Save to USB drive if mounted
         if os.path.exists(usb_directory):
             file_name = usb_directory + rtc.now()
+            video_file = usb_directory + rtc.now() + '.h264'
         # Save to Pi
         else:
             file_name = directory + rtc.now()
+            video_file = directory + rtc.now() + '.h264'
             
         file = open(file_name, "w")
         data_imu = [['Time (s)', 'Acceleration (m/s^2)', 'Gyroscope (deg/sec)']]
@@ -89,6 +96,8 @@ def start_log(channel):
                 lat, long, alt, vel = gps.run()
                 data_gps.append([((t_gps - t_start) / 1000), lat, long, alt, vel])
             
+            camera.start_recording(video_file)
+            
             if GPIO.input(START_BUTTON):
                 GPIO.output(GREEN_LED, GPIO.LOW)
                 file.write(tabulate(data_imu, headers='firstrow',
@@ -96,6 +105,7 @@ def start_log(channel):
                 file.write('\n')
                 file.write(tabulate(data_gps, headers='firstrow',
                                     tablefmt='fancy_grid'))
+                camera.stop_recording()
                 toggle_state = False
                 file.close()
 
