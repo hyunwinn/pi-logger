@@ -1,14 +1,15 @@
 import time
-import datetime
+from datetime import datetime
 import os
+import concurrent.futures
 import RPi.GPIO as GPIO
 from smbus2 import SMBus
+from picamera2 import Picamera2
+from tabulate import tabulate
 from bno055 import BNO055
 from gps import GPS
-from tabulate import tabulate
 from ds3231 import DS3231
 from pi_camera import Pi_Camera
-from picamera2 import Picamera2
 
 # BNO055 mode register
 ACCGYRO = 0x05
@@ -24,6 +25,7 @@ gps = GPS()
 # RTC setup
 rtc = DS3231(bus)
 
+# Pi camera setup
 camera = Picamera2()
 
 # GPIO pins setup
@@ -60,6 +62,20 @@ def millis():
     return time.time_ns() // 1000000
 
 
+def log_imu(data, t_start, t_imu):
+    if millis() >= t_imu:
+        acc, gyro = imu.run()
+        data.append([datetime.now(), t_imu - t_start, acc, gyro])
+        return t_imu + IMU_SAMPLE_INTERVAL
+    
+
+def log_gps(data, t_start, t_gps):
+    if millis() >= t_gps:
+        lat, long, alt, vel = gps.run()
+        data.append([datetime.now(), t_gps - t_start, lat, long, alt, vel])
+        return t_gps + GPS_SAMPLE_INTERVAL
+    
+
 # Define function to log when start button is pressed
 def start_log(channel):
     global toggle_state, file_name, file
@@ -67,6 +83,7 @@ def start_log(channel):
     if not toggle_state and not GPIO.input(START_BUTTON):
         GPIO.output(GREEN_LED, GPIO.HIGH)	# Turn green LED ON 
         toggle_state = True
+        
         # Set start time
         t_start = millis()
         t_imu = t_start
@@ -80,33 +97,28 @@ def start_log(channel):
         else:
             file_name = f'{directory}{rtc.now()}'
             video_file = f'{directory}{rtc.now()}.mp4'
-            
-        file = open(file_name, "w")
-        data_imu = [['Time (s)', 'Acceleration (m/s^2)', 'Gyroscope (deg/sec)']]
-        data_gps = [['Time (s)', 'Latitude (deg)', 'Longitude (deg)',
-                     'Altitude (m)', 'Velocity (m/s)']]
         
-        x = Pi_Camera(camera, video_file)
+        # Create File    
+        file = open(file_name, "w")
+        data_imu = [['Timestamp', 'Time (ms)', 'Acceleration (m/s^2)', 'Gyroscope (deg/sec)']]
+        data_gps = [['Timestamp', 'Time (ms)', 'Latitude (deg)', 'Longitude (deg)', 'Altitude (m)', 'Velocity (m/s)']]
+        
+        cam = Pi_Camera(camera, video_file)
         
         while toggle_state:
-            # Log IMU data
-            if millis() >= t_imu + IMU_SAMPLE_INTERVAL:
-                t_imu += IMU_SAMPLE_INTERVAL
-                acc, gyro = imu.run()
-                data_imu.append([((t_imu - t_start) / 1000), acc, gyro])
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                f1 = executor.submit(log_imu, t_start, t_imu)
+                f2 = executor.submit(log_gps, t_start, t_gps)
+                t_imu = f1.result()
+                t_gps = f2.result()
             
-            # Log GPS data
-            if millis() >= t_gps + GPS_SAMPLE_INTERVAL:
-                t_gps += GPS_SAMPLE_INTERVAL
-                lat, long, alt, vel = gps.run()
-                data_gps.append([((t_gps - t_start) / 1000), lat, long, alt, vel])
+            cam.record()
             
-            x.record()
-            
+            # Start button is pressed once more (to terminate)
             if GPIO.input(START_BUTTON):
                 toggle_state = False
-                GPIO.output(GREEN_LED, GPIO.LOW)
-                x.stop()
+                GPIO.output(GREEN_LED, GPIO.LOW)    # Turn green LED OFF
+                cam.stop()
                 file.write(tabulate(data_imu, headers='firstrow',
                                     tablefmt='fancy_grid'))
                 file.write('\n')
