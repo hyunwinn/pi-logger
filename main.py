@@ -8,6 +8,7 @@ from gps import GPS
 from tabulate import tabulate
 from ds3231 import DS3231
 from pi_camera import Pi_Camera
+from picamera2 import Picamera2
 
 # BNO055 mode register
 ACCGYRO = 0x05
@@ -23,15 +24,17 @@ gps = GPS()
 # RTC setup
 rtc = DS3231(bus)
 
-# Initialise camera object
-camera = Pi_Camera()
+camera = Picamera2()
 
 # GPIO pins setup
 START_BUTTON = 26
+CAMERA_TOGGLE = 6
 GREEN_LED = 17
 BLUE_LED = 27
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 GPIO.setup(START_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(CAMERA_TOGGLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(BLUE_LED, GPIO.OUT)
 GPIO.setup(GREEN_LED, GPIO.OUT)
 
@@ -71,17 +74,19 @@ def start_log(channel):
         
         # Save to USB drive if mounted
         if os.path.exists(usb_directory):
-            file_name = usb_directory + rtc.now()
-            video_file = usb_directory + rtc.now() + '.h264'
+            file_name = f'{usb_directory}{rtc.now()}'
+            video_file = f'{usb_directory}{rtc.now()}.mp4'
         # Save to Pi
         else:
-            file_name = directory + rtc.now()
-            video_file = directory + rtc.now() + '.h264'
+            file_name = f'{directory}{rtc.now()}'
+            video_file = f'{directory}{rtc.now()}.mp4'
             
         file = open(file_name, "w")
         data_imu = [['Time (s)', 'Acceleration (m/s^2)', 'Gyroscope (deg/sec)']]
         data_gps = [['Time (s)', 'Latitude (deg)', 'Longitude (deg)',
                      'Altitude (m)', 'Velocity (m/s)']]
+        
+        x = Pi_Camera(camera, video_file)
         
         while toggle_state:
             # Log IMU data
@@ -96,17 +101,17 @@ def start_log(channel):
                 lat, long, alt, vel = gps.run()
                 data_gps.append([((t_gps - t_start) / 1000), lat, long, alt, vel])
             
-            camera.start_recording(video_file)
+            x.record()
             
             if GPIO.input(START_BUTTON):
+                toggle_state = False
                 GPIO.output(GREEN_LED, GPIO.LOW)
+                x.stop()
                 file.write(tabulate(data_imu, headers='firstrow',
                                     tablefmt='fancy_grid'))
                 file.write('\n')
                 file.write(tabulate(data_gps, headers='firstrow',
                                     tablefmt='fancy_grid'))
-                camera.stop_recording()
-                toggle_state = False
                 file.close()
 
 
