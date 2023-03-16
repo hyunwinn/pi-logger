@@ -156,10 +156,10 @@ class BNO055(object):
             x, y, z = self._read_vector(GYR_DATA_X_LSB)
             return (x / 16.0, y / 16.0, z / 16.0)
         return (None, None, None)
-    
+
 
     def run(self):
-        # Returns readings from accelerometer and gyroscope.
+        # Returns readings from accelerometer and gyroscope
         return self.acceleration(), self.gyroscope()
 
 
